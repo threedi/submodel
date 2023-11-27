@@ -1,0 +1,14 @@
+name: submodel
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.8
+  - argparse
+  - pathlib
+  - shutil
+  - tqdm
+  - geopandas
+  - shapely
+  - fiona
+  - rasterio
+  - warnings
