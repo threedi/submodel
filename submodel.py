@@ -255,6 +255,13 @@ class Submodels:
             impervious_surface['id'].isin(valid_impervious_surface_ids)
         ]    
         
+        # Filter exchange lines connected to a non-existing channel AND completely outside mask
+        valid_channel_ids = filtered_channel['id']
+        temp_exchange_line = exchange_line[
+            exchange_line['channel_id'].isin(valid_channel_ids)
+        ]
+        filtered_exchange_line = self.spatial_join(temp_exchange_line, subarea_gdf, 'inner', 'intersects', '_subarea')
+        
         # Filter other items that should be completely within mask
         filtered_lateral_2d = self.spatial_join(lateral_2d, subarea_gdf, 'inner', 'within', '_subarea')
         filtered_boundary_condition_2d = self.spatial_join(boundary_condition_2d, subarea_gdf, 'inner', 'within', '_subarea')
@@ -262,7 +269,6 @@ class Submodels:
         
         # Filter other items that should be atleast partly within mask
         filtered_linear_obstacle = self.spatial_join(linear_obstacle, subarea_gdf, 'inner', 'intersects', '_subarea')
-        filtered_exchange_line = self.spatial_join(exchange_line, subarea_gdf, 'inner', 'intersects', '_subarea')
         filtered_grid_refinement = self.spatial_join(grid_refinement, subarea_gdf, 'inner', 'intersects', '_subarea')
         filtered_grid_refinement_area = self.spatial_join(grid_refinement_area, subarea_gdf, 'inner', 'intersects', '_subarea')
 
