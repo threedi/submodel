@@ -9,6 +9,8 @@ Some features are:
 * Keep alignment of grid cells due to raster outlining with calculation grid cells of original model
 * Verifies input for tool before running
 
+![Example](res/image.png)
+
 ## Input
 Required:
 * Threedi schematisation directory; folder including .sqlite file, .gpkg file and rasters folder.
@@ -50,6 +52,7 @@ options:
   --calculation_grid_cells_layer_name CALCULATION_GRID_CELLS_LAYER_NAME, -c CALCULATION_GRID_CELLS_LAYER_NAME
                         Optional. Will be used as layer name in case calculation_grid_cells_path is of format
                         geopackage (.gpkg)
+  --isolate_1d, -i      Optional. Instead of deleting 1D outside the submodel domain, set the calculation type to isolated.
 ```
 
 5. Open the 3Di schematisation geopackage in the Schematisation Editor.

@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 from tqdm import tqdm
 
+import pandas as pd
 import geopandas as gpd
 from shapely.geometry import mapping
 from shapely import unary_union
@@ -14,6 +15,7 @@ import tempfile
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="You are attempting to write an empty DataFrame to file. For some drivers, this operation may fail.")
+gdal.UseExceptions()
 
 ### Custom exceptions
 
@@ -49,7 +51,7 @@ class Submodels:
     name = "Threedi SubModel"
     
     def __init__(self, schematisation_directory, subareas_path, field_name, calculation_grid_cells_path, 
-                 subareas_layer_name=None, calculation_grid_cells_layer_name=None):
+                 subareas_layer_name=None, calculation_grid_cells_layer_name=None, isolate_1d=False):
         
         self.schematisation_directory = Path(schematisation_directory)
         self.subareas_path = Path(subareas_path)
@@ -57,6 +59,7 @@ class Submodels:
         self.field_name = field_name
         self.calculation_grid_cells_path = Path(calculation_grid_cells_path)
         self.calculation_grid_cells_layer_name = calculation_grid_cells_layer_name
+        self.isolate_1d = isolate_1d
         
         # Find files and check properties
         self.schematisation_gpkg = self.find_gpkg_file()
@@ -273,6 +276,48 @@ class Submodels:
         filtered_grid_refinement = self.spatial_join(grid_refinement, subarea_gdf, 'inner', 'intersects', '_subarea')
         filtered_grid_refinement_area = self.spatial_join(grid_refinement_area, subarea_gdf, 'inner', 'intersects', '_subarea')
 
+        # If isolate_1d is True, include all 1D elements that are not filtered, but set the calculation type to isolated
+        if self.isolate_1d:
+            # Filter manhole, pipe, culvert and channel
+            isolated_manhole = manhole[
+                ~manhole['id'].isin(filtered_manhole['id'])
+            ]
+
+            isolated_pipe = pipe[
+                ~pipe['id'].isin(filtered_pipe['id'])
+            ]
+
+            isolated_culvert = culvert[
+                ~culvert['id'].isin(filtered_culvert['id'])
+            ]
+
+            isolated_channel = channel[
+                ~channel['id'].isin(filtered_channel['id'])
+            ]
+
+            # set calculation type to isolated (1, 101) for manhole, pipe, culvert and channel
+            isolated_manhole.loc[:, 'calculation_type'] = 1
+            isolated_pipe.loc[:, 'calculation_type'] = 101
+            isolated_culvert.loc[:, 'calculation_type'] = 101
+            isolated_channel.loc[:, 'calculation_type'] = 101
+
+            # concat isolated items manhole, pipe, culvert and channel to the filtered items
+            filtered_manhole = gpd.GeoDataFrame(pd.concat([filtered_manhole, isolated_manhole], ignore_index=True))
+            filtered_pipe = gpd.GeoDataFrame(pd.concat([filtered_pipe, isolated_pipe], ignore_index=True))
+            filtered_culvert = gpd.GeoDataFrame(pd.concat([filtered_culvert, isolated_culvert], ignore_index=True))
+            filtered_channel = gpd.GeoDataFrame(pd.concat([filtered_channel, isolated_channel], ignore_index=True))
+
+            # restore the rest to the original 1D element geoedataframes
+            filtered_connection_node = connection_node
+            filtered_pumpstation = pumpstation
+            filtered_weir = weir
+            filtered_orifice = orifice
+            filtered_pumpstation_map = pumpstation_map
+            filtered_cross_section_location = cross_section_location
+            filtered_boundary_condition_1d = boundary_condition_1d
+            filtered_lateral_1d = lateral_1d
+            filtered_impervious_surface_map = impervious_surface_map
+            
         # Write all filtered items to the schematisation gpkg
         filtered_connection_node.to_file(output_schematisation_gpkg_path, layer='connection_node', driver="GPKG")
         filtered_manhole.to_file(output_schematisation_gpkg_path, layer='manhole', driver="GPKG")
@@ -382,7 +427,7 @@ class Submodels:
 
                 
 def run(schematisation_directory, subareas_path, field_name, calculation_grid_cells_path, 
-        subareas_layer_name=None, calculation_grid_cells_layer_name=None):
+        subareas_layer_name=None, calculation_grid_cells_layer_name=None, isolate_1d=False):
 
     submodels = Submodels(
         schematisation_directory = schematisation_directory, 
@@ -390,7 +435,8 @@ def run(schematisation_directory, subareas_path, field_name, calculation_grid_ce
         calculation_grid_cells_path = calculation_grid_cells_path,
         field_name = field_name, 
         subareas_layer_name = subareas_layer_name, 
-        calculation_grid_cells_layer_name = calculation_grid_cells_layer_name
+        calculation_grid_cells_layer_name = calculation_grid_cells_layer_name,
+        isolate_1d = isolate_1d
     )
     
 def get_parser():
@@ -424,6 +470,11 @@ def get_parser():
     parser.add_argument(
         "--calculation_grid_cells_layer_name", "-c",
         help="Optional. Will be used as layer name in case calculation_grid_cells_path is of format geopackage (.gpkg)",
+    )
+
+    parser.add_argument(
+        "--isolate_1d", "-i", action="store_true", default=False,
+        help="Optional. Instead of deleting 1D outside the submodel domain, set the calculation type to isolated.",
     )
     
     return parser
