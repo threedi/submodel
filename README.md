@@ -4,7 +4,8 @@ A command-line tool to automatically derive submodels from a threedi model.
 ## Features
 Some features are:
 * Automatically derived for a set of subarea (polygon) geometries
-* Clips all 1D elements
+* Clips or isolates all 1D elements (user chooses)
+* Clips all 1D2D and 2D elements
 * Clips all 2D rasters
 * Keep alignment of grid cells due to raster outlining with calculation grid cells of original model
 * Verifies input for tool before running
