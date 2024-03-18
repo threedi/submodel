@@ -22,6 +22,7 @@ Required:
 Optional:
 * Subareas layer name; will be used as layer name in case subareas_path is of format geopackage (.gpkg).
 * Calculation grid cells layer name; will be used as layer name in case calculation_grid_cells_path is of format geopackage (.gpkg).
+* Isolated 1D; will be used to set the calculation type of the 1D water system outside the model domain to isolated. If not set, the 1D water system is deleted.
 
 ## Usage
 The step-by-step approach is:
