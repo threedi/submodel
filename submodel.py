@@ -288,10 +288,7 @@ class Submodels:
             connection_node["id_primary_key"].isin(valid_connection_node_ids)
         ]
 
-        valid_connection_node_ids = filtered_connection_node["id_primary_key"]
-
         # Continue for the new set of connection_nodes with the other items
-
         filtered_boundary_condition_1d = boundary_condition_1d[
             boundary_condition_1d["connection_node_id"].isin(valid_connection_node_ids)
         ]
@@ -425,19 +422,19 @@ class Submodels:
         )
         filtered_boundary_condition_1d.to_file(
             output_schematisation_gpkg_path,
-            layer="1d_boundary_condition",
+            layer="boundary_condition_1d",
             driver="GPKG",
         )
         filtered_boundary_condition_2d.to_file(
             output_schematisation_gpkg_path,
-            layer="2d_boundary_condition",
+            layer="boundary_condition_2d",
             driver="GPKG",
         )
         filtered_lateral_1d.to_file(
-            output_schematisation_gpkg_path, layer="1d_lateral", driver="GPKG"
+            output_schematisation_gpkg_path, layer="lateral_1d", driver="GPKG"
         )
         filtered_lateral_2d.to_file(
-            output_schematisation_gpkg_path, layer="2d_lateral", driver="GPKG"
+            output_schematisation_gpkg_path, layer="lateral_2d", driver="GPKG"
         )
         # filtered_impervious_surface_map.to_file(
         # output_schematisation_gpkg_path,
@@ -448,7 +445,7 @@ class Submodels:
         #  output_schematisation_gpkg_path, layer="impervious_surface", driver="GPKG"
         # )
         filtered_linear_obstacle.to_file(
-            output_schematisation_gpkg_path, layer="linear_obstacle", driver="GPKG"
+            output_schematisation_gpkg_path, layer="obstacle", driver="GPKG"
         )
         filtered_potential_breach.to_file(
             output_schematisation_gpkg_path, layer="potential_breach", driver="GPKG"
@@ -457,7 +454,7 @@ class Submodels:
             output_schematisation_gpkg_path, layer="exchange_line", driver="GPKG"
         )
         filtered_grid_refinement.to_file(
-            output_schematisation_gpkg_path, layer="grid_refinement", driver="GPKG"
+            output_schematisation_gpkg_path, layer="grid_refinement_line", driver="GPKG"
         )
         filtered_grid_refinement_area.to_file(
             output_schematisation_gpkg_path, layer="grid_refinement_area", driver="GPKG"
