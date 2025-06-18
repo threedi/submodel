@@ -14,6 +14,9 @@ from rasterio.mask import mask
 
 import warnings
 from osgeo import ogr
+from osgeo import osr
+
+CREATE_LAYER_OPTIONS = ["GEOMETRY_NAME=geom", "FID=id"]
 
 warnings.filterwarnings(
     "ignore",
@@ -214,8 +217,10 @@ class Submodels:
         # Extract the IDs from the result
         if "id" in filtered_connection_node.columns:
             valid_connection_node_ids = filtered_connection_node["id"]
+            id_column = "id"
         else:
             valid_connection_node_ids = filtered_connection_node["id_primary_key"]
+            id_column = "id_primary_key"
 
         # A conncetion node should always be connected to manhole, channel, pipe, orifice, culvert, weir, pump
 
@@ -257,9 +262,7 @@ class Submodels:
 
         # Special treatment for cross section locations
         filtered_cross_section_location = cross_section_location[
-            cross_section_location["channel_id"].isin(
-                filtered_channel["id_primary_key"]
-            )
+            cross_section_location["channel_id"].isin(filtered_channel[id_column])
         ]
 
         # Create new selection of connection nodes: only keep connection node connected to element, no 'floating' connection nodes
@@ -285,7 +288,7 @@ class Submodels:
                     valid_connection_node_ids.update(structure[column_name])
 
         filtered_connection_node = connection_node[
-            connection_node["id_primary_key"].isin(valid_connection_node_ids)
+            connection_node[id_column].isin(valid_connection_node_ids)
         ]
 
         # Continue for the new set of connection_nodes with the other items
@@ -305,11 +308,11 @@ class Submodels:
         #  "impervious_surface_id"
         # ]
         # filtered_impervious_surface = impervious_surface[
-        # impervious_surface["id_primary_key"].isin(valid_impervious_surface_ids)
+        # impervious_surface[id_column].isin(valid_impervious_surface_ids)
         # ]
 
         # Filter exchange lines connected to a non-existing channel AND completely outside mask
-        valid_channel_ids = filtered_channel["id_primary_key"]
+        valid_channel_ids = filtered_channel[id_column]
         temp_exchange_line = exchange_line[
             exchange_line["channel_id"].isin(valid_channel_ids)
         ]
@@ -342,18 +345,16 @@ class Submodels:
         # If isolate_1d is True, include all 1D elements that are not filtered, but set the calculation type to isolated
         if self.isolate_1d:
             # Filter manhole, pipe, culvert and channel
-            # isolated_manhole = manhole[~manhole["id_primary_key"].isin(filtered_manhole["id_primary_key"])]
+            # isolated_manhole = manhole[~manhole[id_column].isin(filtered_manhole[id_column])]
 
-            isolated_pipe = pipe[
-                ~pipe["id_primary_key"].isin(filtered_pipe["id_primary_key"])
-            ]
+            isolated_pipe = pipe[~pipe[id_column].isin(filtered_pipe[id_column])]
 
             isolated_culvert = culvert[
-                ~culvert["id_primary_key"].isin(filtered_culvert["id_primary_key"])
+                ~culvert[id_column].isin(filtered_culvert[id_column])
             ]
 
             isolated_channel = channel[
-                ~channel["id_primary_key"].isin(filtered_channel["id_primary_key"])
+                ~channel[id_column].isin(filtered_channel[id_column])
             ]
 
             # set calculation type to isolated (1, 101) for manhole, pipe, culvert and channel
@@ -388,76 +389,98 @@ class Submodels:
             # filtered_impervious_surface_map = impervious_surface_map
 
         # Write all filtered items to the schematisation gpkg
-        filtered_connection_node.to_file(
-            output_schematisation_gpkg_path, layer="connection_node", driver="GPKG"
-        )
-        # filtered_manhole.to_file(
-        #    output_schematisation_gpkg_path, layer="manhole", driver="GPKG"
-        # )
-        filtered_pipe.to_file(
-            output_schematisation_gpkg_path, layer="pipe", driver="GPKG"
-        )
-        filtered_weir.to_file(
-            output_schematisation_gpkg_path, layer="weir", driver="GPKG"
-        )
-        filtered_orifice.to_file(
-            output_schematisation_gpkg_path, layer="orifice", driver="GPKG"
-        )
-        filtered_culvert.to_file(
-            output_schematisation_gpkg_path, layer="culvert", driver="GPKG"
-        )
-        filtered_cross_section_location.to_file(
+        write_to_gpkg(
+            filtered_connection_node,
             output_schematisation_gpkg_path,
-            layer="cross_section_location",
-            driver="GPKG",
+            "connection_node",
         )
-        filtered_channel.to_file(
-            output_schematisation_gpkg_path, layer="channel", driver="GPKG"
-        )
-        filtered_pump_map.to_file(
-            output_schematisation_gpkg_path, layer="pump_map", driver="GPKG"
-        )
-        filtered_pump.to_file(
-            output_schematisation_gpkg_path, layer="pump", driver="GPKG"
-        )
-        filtered_boundary_condition_1d.to_file(
+        # write_to_gpkg(filtered_manhole, output_schematisation_gpkg_path, "manhole")
+        write_to_gpkg(
+            filtered_pipe,
             output_schematisation_gpkg_path,
-            layer="boundary_condition_1d",
-            driver="GPKG",
+            "pipe",
         )
-        filtered_boundary_condition_2d.to_file(
+        write_to_gpkg(
+            filtered_weir,
             output_schematisation_gpkg_path,
-            layer="boundary_condition_2d",
-            driver="GPKG",
+            "weir",
         )
-        filtered_lateral_1d.to_file(
-            output_schematisation_gpkg_path, layer="lateral_1d", driver="GPKG"
+        write_to_gpkg(
+            filtered_orifice,
+            output_schematisation_gpkg_path,
+            "orifice",
         )
-        filtered_lateral_2d.to_file(
-            output_schematisation_gpkg_path, layer="lateral_2d", driver="GPKG"
+        write_to_gpkg(
+            filtered_culvert,
+            output_schematisation_gpkg_path,
+            "culvert",
         )
-        # filtered_impervious_surface_map.to_file(
-        # output_schematisation_gpkg_path,
-        # layer="impervious_surface_map",
-        # driver="GPKG",
-        # )
-        # filtered_impervious_surface.to_file(
-        #  output_schematisation_gpkg_path, layer="impervious_surface", driver="GPKG"
-        # )
-        filtered_linear_obstacle.to_file(
-            output_schematisation_gpkg_path, layer="obstacle", driver="GPKG"
+        write_to_gpkg(
+            filtered_cross_section_location,
+            output_schematisation_gpkg_path,
+            "cross_section_location",
         )
-        filtered_potential_breach.to_file(
-            output_schematisation_gpkg_path, layer="potential_breach", driver="GPKG"
+        write_to_gpkg(
+            filtered_channel,
+            output_schematisation_gpkg_path,
+            "channel",
         )
-        filtered_exchange_line.to_file(
-            output_schematisation_gpkg_path, layer="exchange_line", driver="GPKG"
+        write_to_gpkg(
+            filtered_pump_map,
+            output_schematisation_gpkg_path,
+            "pump_map",
         )
-        filtered_grid_refinement.to_file(
-            output_schematisation_gpkg_path, layer="grid_refinement_line", driver="GPKG"
+        write_to_gpkg(
+            filtered_pump,
+            output_schematisation_gpkg_path,
+            "pump",
         )
-        filtered_grid_refinement_area.to_file(
-            output_schematisation_gpkg_path, layer="grid_refinement_area", driver="GPKG"
+        write_to_gpkg(
+            filtered_boundary_condition_1d,
+            output_schematisation_gpkg_path,
+            "boundary_condition_1d",
+        )
+        write_to_gpkg(
+            filtered_boundary_condition_2d,
+            output_schematisation_gpkg_path,
+            "boundary_condition_2d",
+        )
+        write_to_gpkg(
+            filtered_lateral_1d,
+            output_schematisation_gpkg_path,
+            "lateral_1d",
+        )
+        write_to_gpkg(
+            filtered_lateral_2d,
+            output_schematisation_gpkg_path,
+            "lateral_2d",
+        )
+        # write_to_gpkg(filtered_impervious_surface_map, output_schematisation_gpkg_path, "impervious_surface_map")
+        # write_to_gpkg(filtered_impervious_surface, output_schematisation_gpkg_path, "impervious_surface")
+        write_to_gpkg(
+            filtered_linear_obstacle,
+            output_schematisation_gpkg_path,
+            "obstacle",
+        )
+        write_to_gpkg(
+            filtered_potential_breach,
+            output_schematisation_gpkg_path,
+            "potential_breach",
+        )
+        write_to_gpkg(
+            filtered_exchange_line,
+            output_schematisation_gpkg_path,
+            "exchange_line",
+        )
+        write_to_gpkg(
+            filtered_grid_refinement,
+            output_schematisation_gpkg_path,
+            "grid_refinement_line",
+        )
+        write_to_gpkg(
+            filtered_grid_refinement_area,
+            output_schematisation_gpkg_path,
+            "grid_refinement_area",
         )
 
         ### raster clipping
@@ -516,7 +539,7 @@ class Submodels:
 
             # Read with geopandas
             gdf = gpd.read_file(gpkg_path, layer=layer_name, driver="GPKG")
-            gdf["id_primary_key"] = pk_values
+            gdf["id"] = pk_values
             layers_dict[layer_name] = gdf
 
         ds = None
@@ -552,6 +575,100 @@ class Submodels:
 
             with rasterio.open(output_path, "w", **clipped_meta) as dst:
                 dst.write(clipped_data)
+
+
+def write_to_gpkg(gdf, target_gpkg, target_layer_name):
+    # TODO very slow
+    # a function to write a GeoDataFrame to a GeoPackage
+    # it does not use geopandas but ogr
+    # because with ogr you can set in options the primary key to id
+    # use CREATE_LAYER_OPTIONS
+    print(f"Writing {target_layer_name} to {target_gpkg}...")
+
+    driver = ogr.GetDriverByName("GPKG")
+    if driver is None:
+        raise Exception("GeoPackage driver not available.")
+    if gdf.empty:
+        return
+
+    # Open target GPKG (read/write)
+    tgt_ds = ogr.Open(str(target_gpkg), 1)
+    if not tgt_ds:
+        raise RuntimeError(f"Failed to open target: {target_gpkg}")
+
+    # Map shapely geometry type to OGR geometry type
+    shapely_to_ogr = {
+        "Point": ogr.wkbPoint,
+        "LineString": ogr.wkbLineString,
+        "Polygon": ogr.wkbPolygon,
+        "MultiPoint": ogr.wkbMultiPoint,
+        "MultiLineString": ogr.wkbMultiLineString,
+        "MultiPolygon": ogr.wkbMultiPolygon,
+    }
+    geom_type_str = gdf.geometry.iloc[0].geom_type
+    ogr_geom_type = shapely_to_ogr.get(geom_type_str, ogr.wkbUnknown)
+
+    # Remove the layer if it already exists
+    if tgt_ds.GetLayerByName(target_layer_name):
+        tgt_ds.DeleteLayer(target_layer_name)
+
+    # Get CRS from GeoDataFrame
+    srs = None
+    if gdf.crs is not None:
+        try:
+            srs = osr.SpatialReference()
+            srs.ImportFromWkt(gdf.crs.to_wkt())
+        except Exception:
+            srs = None
+
+    # Create a new layer in the target GPKG
+    tgt_layer = tgt_ds.CreateLayer(
+        target_layer_name,
+        srs,
+        geom_type=ogr_geom_type,
+        options=CREATE_LAYER_OPTIONS,
+    )
+    if not tgt_layer:
+        raise RuntimeError(
+            f"Failed to create layer: {target_layer_name} in {target_gpkg}"
+        )
+
+    # Add fields to the layer
+    existing_fields = set()
+    layer_defn = tgt_layer.GetLayerDefn()
+    for i in range(layer_defn.GetFieldCount()):
+        existing_fields.add(layer_defn.GetFieldDefn(i).GetName())
+
+    for col in gdf.columns:
+        if col != "geometry" and col not in existing_fields:
+            # Try to infer field type from pandas dtype
+            dtype = gdf[col].dtype
+            if pd.api.types.is_integer_dtype(dtype):
+                field_type = ogr.OFTInteger
+            elif pd.api.types.is_float_dtype(dtype):
+                field_type = ogr.OFTReal
+            else:
+                field_type = ogr.OFTString
+            field_defn = ogr.FieldDefn(col, field_type)
+            tgt_layer.CreateField(field_defn)
+
+    # Create a feature for each row in the GeoDataFrame
+    for _, row in gdf.iterrows():
+        feature = ogr.Feature(tgt_layer.GetLayerDefn())
+        for col in gdf.columns:
+            if col != "geometry":
+                value = row[col]
+                if pd.isnull(value):
+                    continue
+                feature.SetField(col, value)
+        # Set geometry
+        geom = ogr.CreateGeometryFromWkb(row.geometry.wkb)
+        feature.SetGeometry(geom)
+        tgt_layer.CreateFeature(feature)
+        feature = None  # Free the feature
+
+    # Close the target dataset
+    tgt_ds = None
 
 
 def run(
