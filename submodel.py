@@ -194,7 +194,7 @@ class Submodels:
         pump_map = layers_dict.get("pump_map")
         pump = layers_dict.get("pump")
         boundary_condition_1d = layers_dict.get("boundary_condition_1d")  #
-        boundary_condition_2d = layers_dict.get("boundary_condition_1d")  #
+        boundary_condition_2d = layers_dict.get("boundary_condition_2d")  #
         lateral_1d = layers_dict.get("lateral_1d")  #
         lateral_2d = layers_dict.get("lateral_2d")  #
         # impervious_surface_map = layers_dict.get("impervious_surface_map")
