@@ -57,6 +57,11 @@ RELATIONSHIPS = {
             ("pipe", ["connection_node_id_start", "connection_node_id_end"]),
         ]
     },
+    "pump": {
+        "id": [
+            ("pump_map", ["pump_id"]),
+        ]
+    },
 }
 
 
